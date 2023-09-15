@@ -1,4 +1,3 @@
-from typing import Any
 from cmu_graphics import *
 import cmu_graphics.cmu_graphics as cg
 import math
@@ -78,17 +77,20 @@ def onStep():
 	global step_counter
 	step_counter += 1
 	
-	if step_counter >= app.stepsPerSecond/8:
+	if step_counter >= app.stepsPerSecond/8:	# this will execute 8 times per second
 		step_counter = 0
+		
 		trail.append(Circle(square.centerX, square.centerY, square_w/3, fill="lightGrey", opacity=100))
 		square.toFront()
-		for i in trail:
-			if i.opacity <= 0:
-				i.visible = False
-				trail.pop(0)
-			else:
-				i.opacity -= 10
+		
+		for i in trail:			# for each circle in the trail
+			if i.opacity > 0:	# as long it is actually visible
+				i.opacity -= 10		# decrease opacity and size
 				i.radius *= 0.95
+			else:
+				i.visible = False	# objects with opacity 0 are still rendered, this makes it not
+				trail.pop(0)		# remove circle from the trail
+				
 		
 
 
