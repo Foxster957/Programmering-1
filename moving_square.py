@@ -28,6 +28,11 @@ class Vector2D:
 	
 	magnitude = property(__getmagnitude)
 
+class Projectile:
+	def __init__(self, x, y, direction: Vector2D):
+		self.obj = Circle(x, y, 3, fill="red")
+		self.direction = direction
+		
 
 
 def onKeyHold(key):
@@ -90,13 +95,25 @@ def onStep():
 			else:
 				i.visible = False	# objects with opacity 0 are still rendered, this makes it not
 				trail.pop(0)		# remove circle from the trail
-				
-		
+	
+	for i, p in enumerate(projectiles):
+		p.obj.centerX += p.direction.x*projectile_speed		# move projectile
+		p.obj.centerY += p.direction.y*projectile_speed
+		if p.obj.left>400 or p.obj.right<0 or p.obj.bottom>400 or p.obj.top<0:	# check if outside window
+			p.obj.visible = False
+			projectiles.pop(i)
+
+def onMousePress(mouseX, mouseY):
+	mouse_direction = Vector2D(mouseX-square.centerX, mouseY-square.centerY)	# vector between square and mouse
+	mouse_direction.normalize()
+	projectiles.append(Projectile(square.centerX, square.centerY, mouse_direction))	# create projectile travelling in mouse_direction
 
 
 app.stepsPerSecond = 60
 step_counter = 0
 trail = []
+projectiles = []
+projectile_speed = 4
 move_speed = 2
 square_x = 200
 square_y = 200
