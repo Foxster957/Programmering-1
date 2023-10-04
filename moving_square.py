@@ -32,7 +32,12 @@ class Projectile:
 	def __init__(self, x, y, direction: Vector2D):
 		self.obj = Circle(x, y, 3, fill="red")
 		self.direction = direction
-		
+
+
+def new_projectile():
+	mouse_direction = Vector2D(mouse_x-square.centerX, mouse_y-square.centerY)	# vector between square and mouse
+	mouse_direction.normalize()
+	projectiles.append(Projectile(square.centerX, square.centerY, mouse_direction))	# create projectile travelling in mouse_direction
 
 
 def onKeyHold(key):
@@ -82,16 +87,16 @@ def onStep():
 	global step_counter
 	step_counter += 1
 	
-	if step_counter >= app.stepsPerSecond/8:	# this will execute 8 times per second
+	if step_counter >= app.stepsPerSecond/10:	# this will execute 10 times per second
 		step_counter = 0
 		
-		trail.append(Circle(square.centerX, square.centerY, square_w/3, fill="lightGrey", opacity=100))
+		trail.append(Circle(square.centerX, square.centerY, square_w/3, fill="grey", opacity=100))
 		square.toFront()
 		
 		for i in trail:			# for each circle in the trail
 			if i.opacity > 0:	# as long it is actually visible
-				i.opacity -= 10		# decrease opacity and size
-				i.radius *= 0.95
+				i.opacity -= 20		# decrease opacity and size
+				i.radius *= 0.90
 			else:
 				i.visible = False	# objects with opacity 0 are still rendered, this makes it not
 				trail.pop(0)		# remove circle from the trail
@@ -103,22 +108,25 @@ def onStep():
 			p.obj.visible = False
 			projectiles.pop(i)
 
-def onMousePress(mouseX, mouseY):
-	mouse_direction = Vector2D(mouseX-square.centerX, mouseY-square.centerY)	# vector between square and mouse
-	mouse_direction.normalize()
-	projectiles.append(Projectile(square.centerX, square.centerY, mouse_direction))	# create projectile travelling in mouse_direction
+def onMouseMove(x, y):
+	global mouse_x, mouse_y
+	mouse_x, mouse_y = x, y
+
+def onMousePress(x, y):
+	new_projectile()
+
+def onKeyPress(key):
+	if 'space' in key:
+		new_projectile()
 
 
 app.stepsPerSecond = 60
 step_counter = 0
-trail = []
-projectiles = []
-projectile_speed = 4
-move_speed = 2
-square_x = 200
-square_y = 200
-square_w = 20
-square_h = 20
+trail, projectiles = [], []
+projectile_speed, move_speed = 4, 2
+square_x, square_y = 200, 200
+square_w, square_h = 20, 20
+mouse_x, mouse_y = 0, 0
 square = Rect(square_x-(square_w/2), square_y-(square_h/2), square_w, square_h)
 
 
