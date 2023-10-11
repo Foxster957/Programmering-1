@@ -33,14 +33,61 @@ class Projectile:
 		self.obj = Circle(x, y, 3, fill="red")
 		self.direction = direction
 
+class Enemy:
+	def __init__(self, x, y, color = "navy", health = 3):
+		self.__x, self.__y = x, y
+		self.__health, self.max_health = health, health
+		self.obj = Rect(x-10, y-10, 20, 20, fill=color)
+		self.__healthbar = Rect(x-13, y+14, 26, 4, fill="lime")
+		
+	def get_x(self):
+		return self.__x
+	def set_x(self, val):
+		self.__x = val
+		self.obj.centerX = self.x
+		self.__healthbar.left = self.x-13
+	
+	def get_y(self):
+		return self.__y
+	def set_y(self, val):
+		self.__y = val
+		self.obj.centerY = self.y
+		self.__healthbar.top = self.y+14
+	
+	def get_health(self):
+		return self.__health
+	def set_health(self, val):
+		self.__health = val
+		if self.__health > 0:
+			self.__healthbar.width = self.__health*26/self.max_health
+		if self.health == 1:
+			self.__healthbar.fill = "red"
+	
+	def get_visible(self):
+		return self.obj.visible
+	def set_visible(self, val: bool):
+		self.obj.visible = val
+		self.__healthbar.visible = val
+	
+	x = property(get_x, set_x)
+	y = property(get_y, set_y)
+	health = property(get_health, set_health)
+	visible = property(get_visible, set_visible)
+	
+	
+
 
 def new_projectile():
 	mouse_direction = Vector2D(mouse_x-square.centerX, mouse_y-square.centerY)	# vector between square and mouse
 	mouse_direction.normalize()
 	projectiles.append(Projectile(square.centerX, square.centerY, mouse_direction))	# create projectile travelling in mouse_direction
-
+	global last_projectile
+	last_projectile = 0
 
 def onKeyHold(key):
+	if 'space' in key and last_projectile >= 30:
+		new_projectile()
+	
 	move_vector = Vector2D(0, 0)
 	x_stopped = False	# indicates if a wall is hit on the x axis
 	y_stopped = False	# indicates if a wall is hit on the y axis
@@ -84,8 +131,31 @@ def onKeyHold(key):
 	square.centerY += move_vector.y	# cha cha real smooth
 
 def onStep():
-	global step_counter
+	global step_counter, last_projectile
 	step_counter += 1
+	last_projectile += 1
+	
+	if len(enemies) == 0:
+		while True:
+			rand_x = randrange(20, 381)
+			rand_y = randrange(20, 381)
+			if distance(rand_x, rand_y, square.centerX, square.centerY) >= 30:
+				enemies.append(Enemy(rand_x, rand_y))
+				break
+	
+	for p_index, p in enumerate(projectiles):
+		for e_index, e in enumerate(enemies):
+			if p.obj.hitsShape(e.obj):
+				p.obj.visible = False
+				projectiles.pop(p_index)
+				e.health -= 1
+				if e.health <= 0:
+					e.visible = False
+					enemies.pop(e_index)
+				
+	
+	
+	
 	
 	if step_counter >= app.stepsPerSecond/10:	# this will execute 10 times per second
 		step_counter = 0
@@ -122,7 +192,8 @@ def onKeyPress(key):
 
 app.stepsPerSecond = 60
 step_counter = 0
-trail, projectiles = [], []
+last_projectile = 0
+trail, projectiles, enemies = [], [], []
 projectile_speed, move_speed = 4, 2
 square_x, square_y = 200, 200
 square_w, square_h = 20, 20
