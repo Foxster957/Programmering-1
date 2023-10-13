@@ -135,6 +135,9 @@ def onStep():
 	step_counter += 1
 	last_projectile += 1
 	
+	if mouse_pressed and last_projectile >= 30:
+		new_projectile()
+	
 	if len(enemies) == 0:
 		while True:
 			rand_x = randrange(20, 381)
@@ -152,10 +155,6 @@ def onStep():
 				if e.health <= 0:
 					e.visible = False
 					enemies.pop(e_index)
-				
-	
-	
-	
 	
 	if step_counter >= app.stepsPerSecond/10:	# this will execute 10 times per second
 		step_counter = 0
@@ -182,8 +181,18 @@ def onMouseMove(x, y):
 	global mouse_x, mouse_y
 	mouse_x, mouse_y = x, y
 
+def onMouseDrag(x, y):
+	global mouse_x, mouse_y
+	mouse_x, mouse_y = x, y
+
 def onMousePress(x, y):
 	new_projectile()
+	global mouse_pressed
+	mouse_pressed = True
+
+def onMouseRelease(x, y):
+	global mouse_pressed
+	mouse_pressed = False
 
 def onKeyPress(key):
 	if 'space' in key:
@@ -193,6 +202,7 @@ def onKeyPress(key):
 app.stepsPerSecond = 60
 step_counter = 0
 last_projectile = 0
+mouse_pressed = False
 trail, projectiles, enemies = [], [], []
 projectile_speed, move_speed = 4, 2
 square_x, square_y = 200, 200
