@@ -206,7 +206,7 @@ trail, projectiles, enemies = [], [], []	# some lists
 projectile_speed, move_speed = 4, 2		# gotta go fast
 square_x, square_y = 200, 200	# player start pos
 square_w, square_h = 20, 20		# player dimensions
-mouse_x, mouse_y	# mouse position
+mouse_x, mouse_y = 0	# mouse position
 square = Rect(square_x-(square_w/2), square_y-(square_h/2), square_w, square_h)	# player object
 
 
