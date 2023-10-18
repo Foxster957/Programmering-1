@@ -35,29 +35,30 @@ class Projectile:
 		self.speed = speed
 
 class Enemy:
-	def __init__(self, x, y, color = "navy", health = 3):
+	def __init__(self, x, y, color = "navy", health = 3, move_speed = 0):
 		self.__x, self.__y = x, y
 		self.__health, self.max_health = health, health
 		self.__healthbar = Rect(x-13, y+14, 26, 4, fill="lime")
+		self.__speed = move_speed
 		self.obj = Rect(x-10, y-10, 20, 20, fill=color)
 		
-	def get_x(self):
+	def __get_x(self):
 		return self.__x
-	def set_x(self, val):	# update obj and healthbar pos when x is changed
+	def __set_x(self, val):	# update obj and healthbar pos when x is changed
 		self.__x = val
 		self.obj.centerX = self.x
 		self.__healthbar.left = self.x-13
 	
-	def get_y(self):
+	def __get_y(self):
 		return self.__y
-	def set_y(self, val):	# update obj and healthbar pos when y is changed
+	def __set_y(self, val):	# update obj and healthbar pos when y is changed
 		self.__y = val
 		self.obj.centerY = self.y
 		self.__healthbar.top = self.y+14
 	
-	def get_health(self):
+	def __get_health(self):
 		return self.__health
-	def set_health(self, val):	# update healthbar when health is changed 
+	def __set_health(self, val):	# update healthbar when health is changed 
 		self.__health = val
 		
 		if self.health > 0:
@@ -68,22 +69,28 @@ class Enemy:
 		elif self.health <= self.max_health/2:
 			self.__healthbar.fill = "orange"
 	
-	def get_visible(self):
+	def __get_speed(self):
+		return self.__speed
+	def __set_speed(self, val):
+		self.__speed = val
+	
+	def __get_visible(self):
 		return self.obj.visible
-	def set_visible(self, val: bool):	# update obj and healthbar visibility when visible is changed
+	def __set_visible(self, val: bool):	# update obj and healthbar visibility when visible is changed
 		self.obj.visible = val
 		self.__healthbar.visible = val
 	
-	x = property(get_x, set_x)
-	y = property(get_y, set_y)
-	health = property(get_health, set_health)
-	visible = property(get_visible, set_visible)
+	x = property(__get_x, __set_x)
+	y = property(__get_y, __set_y)
+	health = property(__get_health, __set_health)
+	speed = property(__get_speed, __set_speed)
+	visible = property(__get_visible, __set_visible)
 
 
 def new_projectile():
-	mouse_direction = Vector2D(mouse_x-square.centerX, mouse_y-square.centerY)	# vector between square and mouse
+	mouse_direction = Vector2D(mouse_x-player.centerX, mouse_y-player.centerY)	# vector between square and mouse
 	mouse_direction.normalize()		# make vector length 1
-	projectiles.append(Projectile(square.centerX, square.centerY, mouse_direction))	# create projectile travelling in mouse_direction
+	projectiles.append(Projectile(player.centerX, player.centerY, mouse_direction))	# create projectile travelling in mouse_direction
 	global last_projectile
 	last_projectile = 0
 
@@ -93,26 +100,26 @@ def onKeyHold(key):
 	y_stopped = False	# indicates if a wall is hit on the y axis
 	
 	if 'right' in key or 'd' in key:
-		if square.right >= 400:		# collision with right edge of map
-			square.right = 400
+		if player.right >= 400:		# collision with right edge of map
+			player.right = 400
 			x_stopped = True
 		else:
 			move_vector.x += 1
 	if 'left' in key or 'a' in key:
-		if square.left <= 0:	# collision with left edge of map
-			square.left = 0
+		if player.left <= 0:	# collision with left edge of map
+			player.left = 0
 			x_stopped = True
 		else:
 			move_vector.x -= 1
 	if 'down' in key or 's' in key:
-		if square.bottom >= 400:	# collision with bottom edge of map
-			square.bottom = 400
+		if player.bottom >= 400:	# collision with bottom edge of map
+			player.bottom = 400
 			y_stopped = True
 		else:
 			move_vector.y += 1
 	if 'up' in key or 'w' in key:
-		if square.top <= 0:		# collision with top edge of map
-			square.top = 0
+		if player.top <= 0:		# collision with top edge of map
+			player.top = 0
 			y_stopped = True
 		else:
 			move_vector.y -= 1
@@ -125,8 +132,8 @@ def onKeyHold(key):
 	move_vector.normalize()	# math stuff, makes speed the same in any direction
 	move_vector *= move_speed	# adjustable speed
 	
-	square.centerX += move_vector.x	# slide to the left, slide to the right
-	square.centerY += move_vector.y	# cha cha real smooth
+	player.centerX += move_vector.x	# slide to the left, slide to the right
+	player.centerY += move_vector.y	# cha cha real smooth
 
 def onStep():
 	global last_trail_particle, last_projectile
@@ -140,12 +147,12 @@ def onStep():
 		while True:
 			rand_x = randrange(20, 381)
 			rand_y = randrange(20, 381)
-			if distance(rand_x, rand_y, square.centerX, square.centerY) >= 30:	# make sure enemy is not too close to player
-				enemies.append(Enemy(rand_x, rand_y, health=4))
+			if distance(rand_x, rand_y, player.centerX, player.centerY) >= 50:	# make sure enemy is not too close to player
+				enemies.append(Enemy(rand_x, rand_y, health=4, move_speed=0.5))
 				break
 	
-	for p_index, p in enumerate(projectiles):	# go through all projectiles and enemies and check for hits
-		for e_index, e in enumerate(enemies):
+	for e_index, e in enumerate(enemies):	# go through all enemies and check for hits
+		for p_index, p in enumerate(projectiles):
 			if p.obj.hitsShape(e.obj):
 				p.obj.visible = False	# "delete" projectile
 				projectiles.pop(p_index)	# remove from list of projectiles
@@ -153,11 +160,13 @@ def onStep():
 				if e.health <= 0:
 					e.visible = False	# "delete" enemy
 					enemies.pop(e_index)	# remove from list of enemies
+		if e.obj.hitsShape(player):
+			exit()
 	
-	if last_trail_particle >= app.stepsPerSecond/10:	# add trail particle (10 times per second)
+	if last_trail_particle >= app.stepsPerSecond/10:	# update trail particles (10 times per second)
 		last_trail_particle = 0
-		trail.append(Circle(square.centerX, square.centerY, square_w/3, fill="grey", opacity=100))
-		square.toFront()
+		trail.append(Circle(player.centerX, player.centerY, player_w/3, fill="grey", opacity=100))
+		player.toFront()
 		
 		for i in trail:			# for each circle in the trail
 			if i.opacity > 0:	# as long it is actually visible
@@ -173,6 +182,12 @@ def onStep():
 		if p.obj.left>400 or p.obj.right<0 or p.obj.bottom>400 or p.obj.top<0:	# check if outside window
 			p.obj.visible = False
 			projectiles.pop(i)
+	
+	for i, e in enumerate(enemies):		# move enemies
+		player_dir = Vector2D(player.centerX-e.x, player.centerY-e.y)
+		player_dir.normalize()
+		e.x += player_dir.x*e.speed
+		e.y += player_dir.y*e.speed
 
 def onMouseMove(x, y):
 	global mouse_x, mouse_y
@@ -204,10 +219,10 @@ last_projectile = 0		# time since last projectile was created
 hold_shoot = False	# workaround cause onMouseHold doesn't exist
 trail, projectiles, enemies = [], [], []	# some lists
 projectile_speed, move_speed = 4, 2		# gotta go fast
-square_x, square_y = 200, 200	# player start pos
-square_w, square_h = 20, 20		# player dimensions
+start_x, start_y = 200, 200	# player start pos
+player_w, player_h = 20, 20		# player dimensions
 mouse_x, mouse_y = 0, 0	# mouse position
-square = Rect(square_x-(square_w/2), square_y-(square_h/2), square_w, square_h)	# player object
+player = Rect(start_x-(player_w/2), start_y-(player_h/2), player_w, player_h)	# player object
 
 
 cg.run()
