@@ -1,6 +1,7 @@
 from cmu_graphics import *
 import cmu_graphics.cmu_graphics as cg
 import math
+from time import perf_counter
 
 
 class Vector2D:
@@ -155,14 +156,17 @@ def onKeyHold(key):
 		move_vector.y = 0	# don't move on y axis if you can't
 	
 	move_vector.normalize()	# math stuff, makes speed the same in any direction
-	move_vector *= move_speed	# adjustable speed
+	move_vector *= move_speed*app.deltaTime*60	# adjustable speed
 	
 	player.centerX += move_vector.x	# slide to the left, slide to the right
 	player.centerY += move_vector.y	# cha cha real smooth
 
 def onStep():
+	app.dt_stop = perf_counter()
+	app.deltaTime = app.dt_stop - app.dt_start
+	app.dt_start = perf_counter()
 	global wave_timer, wave_index
-	wave_timer += 1
+	wave_timer += app.deltaTime
 	
 	if label.visible:	# nothing below this will execute while a label is shown on screen
 		label.toFront()
@@ -175,14 +179,15 @@ def onStep():
 			p.obj.visible = False
 		projectiles.clear()
 		
-		if wave_index >= 0 and wave_timer >= 120:	# wave titles disappear after 120 steps (2 sec)
+		if wave_index >= 0 and wave_timer >= 2:	# wave titles disappear after 120 steps (2 sec)
 			label.visible = False
 			wave_timer = 0
 		return
 	
 	global last_trail_particle, last_projectile, kill_count
-	last_trail_particle += 1	# step counters
-	last_projectile += 1
+	last_trail_particle += app.deltaTime	# step counters
+	last_projectile += app.deltaTime
+	
 	
 	if kill_count == len(waves[wave_index]):	# when wave is defeated, move on to next
 		wave_timer = 0
@@ -192,11 +197,11 @@ def onStep():
 		elif wave_index >= 0:	# wave_index is -1 only in game over or win state
 			new_wave()
 	
-	if hold_shoot and last_projectile >= 60/fire_rate:	# shoot once each 30 steps when holding shoot
+	if hold_shoot and last_projectile >= 1/fire_rate:	# shoot fire_rate times per second when holding shoot
 		new_projectile()
 		
 	for item in waves[wave_index]:	# create new enemies according to wave list
-		if item[0]*6 == wave_timer:
+		if wave_timer >= item[0] and wave_timer-item[0] <= app.deltaTime:	# smart math
 			while True:
 				rand_x = randrange(20, 381)
 				rand_y = randrange(20, 381)
@@ -218,7 +223,7 @@ def onStep():
 		if e.obj.hitsShape(player):
 			game_over()
 
-	if last_trail_particle >= 6:	# update trail particles (10 times per second)
+	if last_trail_particle >= 0.1:	# update trail particles (10 times per second)
 		last_trail_particle = 0
 		trail.append(Circle(player.centerX, player.centerY, player_w/3, fill="grey", opacity=100))
 		player.toFront()
@@ -232,8 +237,8 @@ def onStep():
 				trail.pop(0)		# remove circle from the trail
 	
 	for index, p in enumerate(projectiles):		# move projectiles
-		p.obj.centerX += p.direction.x*p.speed
-		p.obj.centerY += p.direction.y*p.speed
+		p.obj.centerX += p.direction.x*p.speed*app.deltaTime*60
+		p.obj.centerY += p.direction.y*p.speed*app.deltaTime*60
 		if p.obj.left>400 or p.obj.right<0 or p.obj.bottom>400 or p.obj.top<0:	# check if outside window
 			p.obj.visible = False
 			projectiles.pop(index)
@@ -241,8 +246,8 @@ def onStep():
 	for index, e in enumerate(enemies):		# move enemies
 		player_dir = Vector2D(player.centerX-e.x, player.centerY-e.y)
 		player_dir.normalize()
-		e.x += player_dir.x*e.speed
-		e.y += player_dir.y*e.speed
+		e.x += player_dir.x*e.speed*app.deltaTime*60
+		e.y += player_dir.y*e.speed*app.deltaTime*60
 
 def onMouseMove(x, y):
 	global mouse_x, mouse_y
@@ -259,7 +264,7 @@ def onMouseRelease(x, y):
 	hold_shoot = False	# workaround cause there's no onMouseHold
 def onKeyPress(key):
 	global wave_index, wave_timer
-	if wave_index == -1 and ('enter' in key or 'space' in key):
+	if wave_index == -1 and ('enter' in key):
 		for e in enemies:
 			e.visible = False
 		enemies.clear()
@@ -278,7 +283,8 @@ def onKeyRelease(key):
 		hold_shoot = False	# the mouse hold workaround is already there, might as well use it twice
 	
 
-app.stepsPerSecond = 60	# update rate, do not change, way too many things are hardcoded with this in mind
+app.stepsPerSecond = 60	# update rate, nothing *should* be hardcoded to this
+app.dt_start = perf_counter()
 last_trail_particle = 0	# steps since last trail particle was created
 last_projectile = 0		# steps since last projectile was created
 wave_timer = 0		# steps since wave started
@@ -300,30 +306,30 @@ label.visible = False
 
 kill_count = 0
 wave_index = 0
-waves = [	# [<spawn timecode in tenths of seconds>, <color>, <health>, <move speed>]
+waves = [	# [<spawn timecode in seconds>, <color>, <health>, <move speed>]
 	[
+		[0.5, "steelBlue", 3, 0.5],
+		[0.5, "steelBlue", 3, 0.5],
 		[5, "steelBlue", 3, 0.5],
 		[5, "steelBlue", 3, 0.5],
-		[50, "steelBlue", 3, 0.5],
-		[50, "steelBlue", 3, 0.5],
-		[90, "fireBrick", 5, 0.3]
+		[9, "fireBrick", 5, 0.3]
 	], [
-		[5, "steelBlue", 3, 0.5],
-		[5, "steelBlue", 3, 0.5],
-		[15, "steelBlue", 3, 0.5],
-		[50, "fireBrick", 5, 0.3],
-		[80, "steelBlue", 3, 0.5],
-		[80, "steelBlue", 3, 0.5],
-		[110, "fireBrick", 5, 0.3]
+		[0.5, "steelBlue", 3, 0.5],
+		[0.5, "steelBlue", 3, 0.5],
+		[1.5, "steelBlue", 3, 0.5],
+		[5, "fireBrick", 5, 0.3],
+		[8, "steelBlue", 3, 0.5],
+		[8, "steelBlue", 3, 0.5],
+		[11, "fireBrick", 5, 0.3]
 	], [
-		[5, "steelBlue", 3, 0.5],
-		[5, "steelBlue", 3, 0.5],
-		[30, "fireBrick", 5, 0.3],
-		[30, "fireBrick", 5, 0.3],
-		[80, "purple", 7, 0.2],
-		[130, "fireBrick", 5, 0.3],
-		[130, "steelBlue", 3, 0.5],
-		[130, "steelBlue", 3, 0.5]
+		[0.5, "steelBlue", 3, 0.5],
+		[0.5, "steelBlue", 3, 0.5],
+		[3, "fireBrick", 5, 0.3],
+		[3, "fireBrick", 5, 0.3],
+		[8, "purple", 7, 0.2],
+		[13, "fireBrick", 5, 0.3],
+		[13, "steelBlue", 3, 0.5],
+		[13, "steelBlue", 3, 0.5]
 	]
 ]
 
