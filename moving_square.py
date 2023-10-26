@@ -35,7 +35,7 @@ class Projectile:
 		self.speed = speed
 
 class Enemy:
-	def __init__(self, x, y, color = "navy", health = 3, move_speed = 0):
+	def __init__(self, x, y, color = "steelBlue", health = 3, move_speed = 0):
 		self.__x, self.__y = x, y
 		self.__health, self.max_health = health, health
 		self.__healthbar = Rect(x-13, y+14, 26, 4, fill="lime")
@@ -259,7 +259,7 @@ def onMouseRelease(x, y):
 	hold_shoot = False	# workaround cause there's no onMouseHold
 def onKeyPress(key):
 	global wave_index, wave_timer
-	if wave_index == -1 and 'enter' in key:
+	if wave_index == -1 and ('enter' in key or 'space' in key):
 		for e in enemies:
 			e.visible = False
 		enemies.clear()
@@ -278,7 +278,7 @@ def onKeyRelease(key):
 		hold_shoot = False	# the mouse hold workaround is already there, might as well use it twice
 	
 
-app.stepsPerSecond = 60
+app.stepsPerSecond = 60	# update rate, do not change, way too many things are hardcoded with this in mind
 last_trail_particle = 0	# steps since last trail particle was created
 last_projectile = 0		# steps since last projectile was created
 wave_timer = 0		# steps since wave started
@@ -300,26 +300,30 @@ label.visible = False
 
 kill_count = 0
 wave_index = 0
-waves = [
+waves = [	# [<spawn timecode in tenths of seconds>, <color>, <health>, <move speed>]
 	[
-		[5, "navy", 3, 0.5],
-		[5, "navy", 3, 0.5],
-		[50, "navy", 3, 0.5],
-		[50, "navy", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
+		[50, "steelBlue", 3, 0.5],
+		[50, "steelBlue", 3, 0.5],
 		[90, "fireBrick", 5, 0.3]
 	], [
-		[5, "navy", 3, 0.5],
-		[5, "navy", 3, 0.5],
-		[5, "navy", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
+		[15, "steelBlue", 3, 0.5],
 		[50, "fireBrick", 5, 0.3],
-		[80, "navy", 3, 0.5],
-		[80, "navy", 3, 0.5],
+		[80, "steelBlue", 3, 0.5],
+		[80, "steelBlue", 3, 0.5],
 		[110, "fireBrick", 5, 0.3]
 	], [
-		[5, "navy", 3, 0.5],
-		[5, "navy", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
+		[5, "steelBlue", 3, 0.5],
 		[30, "fireBrick", 5, 0.3],
-		[30, "fireBrick", 5, 0.3]
+		[30, "fireBrick", 5, 0.3],
+		[80, "purple", 7, 0.2],
+		[130, "fireBrick", 5, 0.3],
+		[130, "steelBlue", 3, 0.5],
+		[130, "steelBlue", 3, 0.5]
 	]
 ]
 
