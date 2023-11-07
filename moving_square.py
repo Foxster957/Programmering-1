@@ -327,9 +327,9 @@ waves = [	# [<spawn timecode in seconds>, <color>, <health>, <move speed>]
 		[3, "fireBrick", 5, 0.3],
 		[3, "fireBrick", 5, 0.3],
 		[8, "purple", 7, 0.2],
-		[13, "fireBrick", 5, 0.3],
-		[13, "steelBlue", 3, 0.5],
-		[13, "steelBlue", 3, 0.5]
+		[11, "fireBrick", 5, 0.3],
+		[11, "steelBlue", 3, 0.5],
+		[11, "steelBlue", 3, 0.5]
 	]
 ]
 
