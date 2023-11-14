@@ -190,24 +190,36 @@ def onStep():
 	
 	
 	if kill_count == len(waves[wave_index]):	# when wave is defeated, move on to next
-		wave_timer = 0
-		wave_index += 1
-		if wave_index >= len(waves):	# if there are no more waves left, you could consider that a win
-			win()
-		elif wave_index >= 0:	# wave_index is -1 only in game over or win state
-			new_wave()
+		if wave_timer > 0:
+			wave_timer = -1
+		elif wave_timer >= -app.deltaTime:
+			wave_index += 1
+			if wave_index >= len(waves):	# if there are no more waves left, you could consider that a win
+				win()
+			elif wave_index >= 0:	# wave_index is -1 only in game over or win state
+				new_wave()
 	
 	if hold_shoot and last_projectile >= 1/fire_rate:	# shoot fire_rate times per second when holding shoot
 		new_projectile()
 		
 	for item in waves[wave_index]:	# create new enemies according to wave list
 		if wave_timer >= item[0] and wave_timer-item[0] <= app.deltaTime:	# smart math
-			while True:
+			loop = True
+			while loop:
 				rand_x = randrange(20, 381)
 				rand_y = randrange(20, 381)
-				if distance(rand_x, rand_y, player.centerX, player.centerY) >= 50:	# make sure enemy is not too close to player
-					enemies.append(Enemy(rand_x, rand_y, color=item[1], health=item[2], move_speed=item[3]))
-					break
+				# print(distance(rand_x, rand_y, player.centerX, player.centerY))
+				if distance(rand_x, rand_y, player.centerX, player.centerY) >= 180:	# make sure enemy is not too close to player
+					if enemies != []:
+						for e in enemies:
+							print(distance(rand_x, rand_y, e.x, e.y))
+							if distance(rand_x, rand_y, e.x, e.y) >= 30:
+								enemies.append(Enemy(rand_x, rand_y, color=item[1], health=item[2], move_speed=item[3]))
+								loop = False
+								break
+					else:
+						enemies.append(Enemy(rand_x, rand_y, color=item[1], health=item[2], move_speed=item[3]))
+						loop = False
 	
 	for e_index, e in enumerate(enemies):	# go through all enemies and check for hits
 		for p_index, p in enumerate(projectiles):
@@ -216,6 +228,8 @@ def onStep():
 				projectiles.pop(p_index)	# remove from list of projectiles
 				e.health -= 1
 				if e.health <= 0:
+					score.value = int(score.value)+math.floor(e.max_health/2)
+					score.left = 65
 					e.visible = False	# "delete" enemy
 					enemies.pop(e_index)	# remove from list of enemies
 					kill_count += 1
@@ -269,6 +283,8 @@ def onKeyPress(key):
 			e.visible = False
 		enemies.clear()
 		player.centerX, player.centerY = start_x, start_y
+		score.value = "0"
+		score.left = 65
 		wave_index = 0
 		wave_timer = 0
 		new_wave()
@@ -285,14 +301,14 @@ def onKeyRelease(key):
 
 app.stepsPerSecond = 60	# update rate, nothing *should* be hardcoded to this
 app.dt_start = perf_counter()
-last_trail_particle = 0	# steps since last trail particle was created
-last_projectile = 0		# steps since last projectile was created
-wave_timer = 0		# steps since wave started
+last_trail_particle = 0	# time since last trail particle was created (seconds)
+last_projectile = 0		# time since last projectile was created (seconds)
+wave_timer = 0		# time since wave started (seconds)
 
 hold_shoot = False	# workaround cause onMouseHold doesn't exist
 
 projectile_speed, move_speed = 6, 2		# gotta go fast
-fire_rate = 2
+fire_rate = 3
 
 trail, projectiles, enemies = [], [], []	# some lists
 mouse_x, mouse_y = 0, 0	# mouse position
@@ -300,6 +316,10 @@ mouse_x, mouse_y = 0, 0	# mouse position
 start_x, start_y = 200, 200	# player start pos
 player_w, player_h = 20, 20		# player dimensions
 player = Rect(start_x-(player_w/2), start_y-(player_h/2), player_w, player_h)	# player object
+
+Label("Score: ", 35, 15, size=20, bold=True)
+score = Label("0", 65, 15, size=20, bold=True, align="left")
+
 
 label = Group(Rect(50, 150, 300, 100, fill="grey", opacity=75), Label("", 200, 200, size=46, font="monospace", bold=True))		# used to display text
 label.visible = False
