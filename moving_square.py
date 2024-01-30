@@ -64,8 +64,14 @@ class Enemy:
         
         if self.health > 0:
             self.__healthbar.width = self.health*26/self.max_health
-        
-        if self.health <= self.max_health/3:
+        elif self.health <= 0:
+            score.value = int(score.value)+math.floor(self.max_health/2)
+            score.left = 65
+            self.visible = False
+            enemies.remove(self)
+            global kill_count
+            kill_count += 1
+        elif self.health <= self.max_health/3:
             self.__healthbar.fill = "red"
         elif self.health <= self.max_health/2:
             self.__healthbar.fill = "orange"
@@ -80,6 +86,15 @@ class Enemy:
     def __set_visible(self, val: bool):	# update obj and healthbar visibility when visible is changed
         self.obj.visible = val
         self.__healthbar.visible = val
+    
+    def check_for_hits(self):
+        for p in projectiles:
+            if self.obj.hitsShape(p.obj):
+                p.obj.visible = False
+                projectiles.remove(p)
+                self.health -= 1
+        if self.obj.hitsShape(player):
+            game_over()
     
     x = property(__get_x, __set_x)
     y = property(__get_y, __set_y)
@@ -98,6 +113,28 @@ def new_projectile():
     global last_projectile
     last_projectile = 0
 
+def spawn_enemy(enemy):
+    while True:
+        rand_x = randrange(20, 381)
+        rand_y = randrange(20, 381)
+        
+        if distance(rand_x, rand_y, player.centerX, player.centerY) < 180:
+            pass
+        elif get_enemy_proximity(rand_x, rand_y) < 30:
+            pass
+        else:
+            enemies.append(Enemy(rand_x, rand_y, color=enemy[1], health=enemy[2], move_speed=enemy[3]))
+            break
+        
+def get_enemy_proximity(x, y):
+    if enemies == []:
+        return math.inf
+    else:
+        closest_distance = math.inf
+        for e in enemies:
+            closest_distance = min(distance(x, y, e.x, e.y), closest_distance)
+            return closest_distance
+
 def game_over():
     global wave_index
     wave_index = -1
@@ -111,11 +148,17 @@ def win():
     label.children[1].value = "You Win!"
 
 def new_wave():
-    global kill_count
-    kill_count = 0
-    label.visible = True
-    label.children[1].value = "Wave {}".format(wave_index+1)	# display wave number
-    player.centerX, player.centerY = start_x, start_y	# reset player pos
+    global wave_timer, wave_index, kill_count
+    wave_timer = 0
+    wave_index += 1
+    
+    if wave_index >= len(WAVE_DATA):    # if there are no more waves left, you could consider that a win
+        win()
+    else:
+        kill_count = 0
+        label.visible = True
+        label.children[1].value = "Wave {}".format(wave_index+1)    # display wave number
+        player.centerX, player.centerY = start_x, start_y   # reset player pos
 
 def onKeyHold(key):
     if label.visible:	# nothing below this will execute while a label is shown on screen
@@ -170,7 +213,7 @@ def onStep():
         global wave_timer, wave_index
         wave_timer += app.deltaTime
         
-        if label.visible:	# nothing below this will execute while a label is shown on screen
+        if label.visible or wave_index == -1:	# nothing below this will execute while a label is shown on screen
             label.toFront()
             
             for i in trail:
@@ -181,63 +224,31 @@ def onStep():
                 p.obj.visible = False
             projectiles.clear()
             
-            if wave_index >= 0 and wave_timer >= 2:	# wave titles disappear after 120 steps (2 sec)
+            if wave_index != -1 and wave_timer >= 2:	# wave titles disappear after 120 steps (2 sec)
                 label.visible = False
                 wave_timer = 0
             return
         
-        global last_trail_particle, last_projectile, kill_count
+        global last_trail_particle, last_projectile
         last_trail_particle += app.deltaTime	# step counters
         last_projectile += app.deltaTime
         
-        
+        global kill_count
         if kill_count == len(WAVE_DATA[wave_index]):	# when wave is defeated, move on to next
-            if wave_timer > 0:
                 wave_timer = -1
-            elif wave_timer >= -app.deltaTime:
-                wave_index += 1
-                if wave_index >= len(WAVE_DATA):	# if there are no more waves left, you could consider that a win
-                    win()
-                elif wave_index >= 0:	# wave_index is -1 only in game over or win state
-                    new_wave()
+                kill_count = -1
+        elif kill_count == -1 and wave_timer >= 0:
+            new_wave()
         
         if hold_shoot and last_projectile >= 1/fire_rate:	# shoot fire_rate times per second when holding shoot
             new_projectile()
             
         for item in WAVE_DATA[wave_index]:	# create new enemies according to wave list
-            if wave_timer >= item[0] and wave_timer-item[0] <= app.deltaTime:	# smart math
-                loop = True
-                while loop:
-                    rand_x = randrange(20, 381)
-                    rand_y = randrange(20, 381)
-                    # print(distance(rand_x, rand_y, player.centerX, player.centerY))
-                    if distance(rand_x, rand_y, player.centerX, player.centerY) >= 180:	# make sure enemy is not too close to player
-                        if enemies != []:
-                            for e in enemies:
-                                # print(distance(rand_x, rand_y, e.x, e.y))
-                                if distance(rand_x, rand_y, e.x, e.y) >= 30:
-                                    enemies.append(Enemy(rand_x, rand_y, color=item[1], health=item[2], move_speed=item[3]))
-                                    loop = False
-                                    break
-                        else:
-                            enemies.append(Enemy(rand_x, rand_y, color=item[1], health=item[2], move_speed=item[3]))
-                            loop = False
+            if wave_timer >= item[0] and item[0] + app.deltaTime >= wave_timer: # smart math
+                spawn_enemy(item)
         
-        for e_index, e in enumerate(enemies):	# go through all enemies and check for hits
-            for p_index, p in enumerate(projectiles):
-                if p.obj.hitsShape(e.obj):
-                    p.obj.visible = False	# "delete" projectile
-                    projectiles.pop(p_index)	# remove from list of projectiles
-                    e.health -= 1
-                    if e.health <= 0:
-                        score.value = int(score.value)+math.floor(e.max_health/2)
-                        score.left = 65
-                        e.visible = False	# "delete" enemy
-                        enemies.pop(e_index)	# remove from list of enemies
-                        kill_count += 1
-            
-            if e.obj.hitsShape(player):
-                game_over()
+        for e in enemies:	# go through all enemies and check for hits
+            e.check_for_hits()
 
         if last_trail_particle >= 0.1:	# update trail particles (10 times per second)
             last_trail_particle = 0
@@ -253,17 +264,19 @@ def onStep():
                     trail.pop(0)		# remove circle from the trail
         
         for index, p in enumerate(projectiles):		# move projectiles
-            p.obj.centerX += p.direction.x*p.speed*app.deltaTime*60
-            p.obj.centerY += p.direction.y*p.speed*app.deltaTime*60
-            if p.obj.left>400 or p.obj.right<0 or p.obj.bottom>400 or p.obj.top<0:	# check if outside window
+            move_vector = p.direction * p.speed * app.deltaTime * 60
+            p.obj.centerX += move_vector.x
+            p.obj.centerY += move_vector.y
+            if p.obj.left > 400 or p.obj.right < 0 or p.obj.bottom > 400 or p.obj.top < 0:	# check if outside window
                 p.obj.visible = False
-                projectiles.pop(index)
+                projectiles.remove(p)
         
-        for index, e in enumerate(enemies):		# move enemies
-            player_dir = Vector2D(player.centerX-e.x, player.centerY-e.y)
+        for e in enemies:		# move enemies
+            player_dir = Vector2D(player.centerX - e.x, player.centerY - e.y)
             player_dir.normalize()
-            e.x += player_dir.x*e.speed*app.deltaTime*60
-            e.y += player_dir.y*e.speed*app.deltaTime*60
+            move_vector = player_dir*e.speed*app.deltaTime*60
+            e.x += move_vector.x
+            e.y += move_vector.y
 
 def onMouseMove(x, y):
     if(app.scene == GAME):
@@ -285,7 +298,7 @@ def onMouseRelease(x, y):
 def onKeyPress(key):
     if(app.scene == GAME):
         global wave_index, wave_timer
-        if wave_index == -1:
+        if wave_index == -1:    # game over or win
             for e in enemies:
                 e.visible = False
             player.visible = False
@@ -293,7 +306,7 @@ def onKeyPress(key):
             score_label.visible = False
             menu_init()
     
-        if 'space' in key:	# spawn one projectile when pressed
+        elif 'space' in key:	# spawn one projectile when pressed
             new_projectile()
             global hold_shoot
             hold_shoot = True	# the mouse hold workaround is already there, might as well use it twice
