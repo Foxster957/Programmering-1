@@ -102,7 +102,7 @@ class Enemy:
     speed = property(__get_speed, __set_speed)
     visible = property(__get_visible, __set_visible)
 
-
+""" creates a new projectile at the player's position, pointing in the direction of the mouse """
 def new_projectile():
     if label.visible:	# nothing below this will execute while a label is shown on screen
         return
@@ -113,7 +113,9 @@ def new_projectile():
     global last_projectile
     last_projectile = 0
 
-def spawn_enemy(enemy):
+""" spawns an enemy at a random position (distance to player >= 180, distance to other enemies >= 30),
+    with properties [color, health, move_speed] """
+def spawn_enemy(properties):
     while True:
         rand_x = randrange(20, 381)
         rand_y = randrange(20, 381)
@@ -123,9 +125,10 @@ def spawn_enemy(enemy):
         elif get_enemy_proximity(rand_x, rand_y) < 30:
             pass
         else:
-            enemies.append(Enemy(rand_x, rand_y, color=enemy[1], health=enemy[2], move_speed=enemy[3]))
+            enemies.append(Enemy(rand_x, rand_y, color=properties[0], health=properties[1], move_speed=properties[2]))
             break
-        
+
+""" checks all enemies to find the closest one, then returns the distance """
 def get_enemy_proximity(x, y):
     if enemies == []:
         return math.inf
@@ -135,18 +138,21 @@ def get_enemy_proximity(x, y):
             closest_distance = min(distance(x, y, e.x, e.y), closest_distance)
             return closest_distance
 
+""" shows game over screen """
 def game_over():
     global wave_index
     wave_index = -1
     label.visible = True
     label.children[1].value = "Game Over"
 
+""" shows win screen"""
 def win():
     global wave_index
     wave_index = -1
     label.visible = True
     label.children[1].value = "You Win!"
 
+""" checks for win, otherwise starts the next wave """
 def new_wave():
     global wave_timer, wave_index, kill_count
     wave_timer = 0
@@ -159,6 +165,59 @@ def new_wave():
         label.visible = True
         label.children[1].value = "Wave {}".format(wave_index+1)    # display wave number
 
+""" all the game logic stuff happening constantly """
+def game_update():
+    global last_trail_particle, last_projectile
+    last_trail_particle += app.deltaTime
+    last_projectile += app.deltaTime
+    
+    global kill_count, wave_index, wave_timer
+    if kill_count == len(WAVE_DATA[wave_index]):	# when wave is defeated, move on to next
+        wave_timer = -1
+        kill_count = -1
+    elif kill_count == -1 and wave_timer >= 0:
+        new_wave()
+    
+    if hold_shoot and last_projectile >= 1/fire_rate:	# shoot fire_rate times per second when holding shoot
+        new_projectile()
+        
+    for item in WAVE_DATA[wave_index]:	# create new enemies according to wave list
+        if wave_timer >= item[0] and item[0] + app.deltaTime >= wave_timer: # smart math
+            spawn_enemy(item[1:])
+    
+    for e in enemies:	# go through all enemies and check for hits
+        e.check_for_hits()
+    if last_trail_particle >= 0.1:	# update trail particles (10 times per second)
+        last_trail_particle = 0
+        trail.append(Circle(player.centerX, player.centerY, player_w/3, fill="grey", opacity=100))
+        player.toFront()
+        
+        for i in trail:			# for each circle in the trail
+            if i.opacity > 0:	# as long it is actually visible
+                i.opacity -= 20		# decrease opacity and size
+                i.radius *= 0.90
+            else:
+                i.visible = False	# objects with opacity 0 are still rendered, this makes it not
+                trail.pop(0)		# remove circle from the trail
+    
+    for p in projectiles:   # move projectiles
+        move_vector = p.direction * p.speed * app.deltaTime * 60
+        p.obj.centerX += move_vector.x
+        p.obj.centerY += move_vector.y
+        
+        if p.obj.left > 400 or p.obj.right < 0 or p.obj.bottom > 400 or p.obj.top < 0:	# check if outside window
+            p.obj.visible = False
+            projectiles.remove(p)
+    
+    for e in enemies:   # move enemies
+        player_dir = Vector2D(player.centerX - e.x, player.centerY - e.y)
+        player_dir.normalize()
+        
+        move_vector = player_dir*e.speed*app.deltaTime*60
+        e.x += move_vector.x
+        e.y += move_vector.y
+
+""" movement using arrow keys and WASD """
 def onKeyHold(key):
     move_vector = Vector2D(0, 0)
     x_stopped = False	# indicates if a wall is hit on the x axis
@@ -200,16 +259,17 @@ def onKeyHold(key):
     player.centerX += move_vector.x	# slide to the left, slide to the right
     player.centerY += move_vector.y	# cha cha real smooth
 
+""" main loop """
 def onStep():
     app.dt_stop = perf_counter()
-    app.deltaTime = app.dt_stop - app.dt_start  # deltaTime is the time since the last frame was rendered
+    app.deltaTime = app.dt_stop - app.dt_start  # calculates deltaTime (time since the last frame was rendered)
     app.dt_start = perf_counter()
     
     if(app.scene == GAME):
         global wave_timer, wave_index
         wave_timer += app.deltaTime
         
-        if label.visible or wave_index == -1:	# nothing below this block will execute while label is shown
+        if label.visible or wave_index == -1:	# clear trail and projectiles
             label.toFront()
             
             for i in trail:
@@ -224,66 +284,18 @@ def onStep():
                 label.visible = False
                 wave_timer = 0
             return
-        
-        global last_trail_particle, last_projectile
-        last_trail_particle += app.deltaTime	# step counters
-        last_projectile += app.deltaTime
-        
-        global kill_count
-        if kill_count == len(WAVE_DATA[wave_index]):	# when wave is defeated, move on to next
-                wave_timer = -1
-                kill_count = -1
-        elif kill_count == -1 and wave_timer >= 0:
-            new_wave()
-        
-        if hold_shoot and last_projectile >= 1/fire_rate:	# shoot fire_rate times per second when holding shoot
-            new_projectile()
-            
-        for item in WAVE_DATA[wave_index]:	# create new enemies according to wave list
-            if wave_timer >= item[0] and item[0] + app.deltaTime >= wave_timer: # smart math
-                spawn_enemy(item)
-        
-        for e in enemies:	# go through all enemies and check for hits
-            e.check_for_hits()
+        else:
+            game_update()
 
-        if last_trail_particle >= 0.1:	# update trail particles (10 times per second)
-            last_trail_particle = 0
-            trail.append(Circle(player.centerX, player.centerY, player_w/3, fill="grey", opacity=100))
-            player.toFront()
-            
-            for i in trail:			# for each circle in the trail
-                if i.opacity > 0:	# as long it is actually visible
-                    i.opacity -= 20		# decrease opacity and size
-                    i.radius *= 0.90
-                else:
-                    i.visible = False	# objects with opacity 0 are still rendered, this makes it not
-                    trail.pop(0)		# remove circle from the trail
-        
-        for p in projectiles:   # move projectiles
-            move_vector = p.direction * p.speed * app.deltaTime * 60
-            p.obj.centerX += move_vector.x
-            p.obj.centerY += move_vector.y
-            
-            if p.obj.left > 400 or p.obj.right < 0 or p.obj.bottom > 400 or p.obj.top < 0:	# check if outside window
-                p.obj.visible = False
-                projectiles.remove(p)
-        
-        for e in enemies:   # move enemies
-            player_dir = Vector2D(player.centerX - e.x, player.centerY - e.y)
-            player_dir.normalize()
-            
-            move_vector = player_dir*e.speed*app.deltaTime*60
-            e.x += move_vector.x
-            e.y += move_vector.y
-
-def onMouseMove(x, y):
+def onMouseMove(x, y):      # current mouse pos is always stored in mouse_x and mouse_y
     if(app.scene == GAME):
         global mouse_x, mouse_y
-        mouse_x, mouse_y = x, y	# current mouse pos is always stored in mouse_x and mouse_y
-def onMouseDrag(x, y):
+        mouse_x, mouse_y = x, y
+def onMouseDrag(x, y):      # onMouseMove won't trigger if mouse button is held, so this updates pos too
+
     if(app.scene == GAME):
         global mouse_x, mouse_y
-        mouse_x, mouse_y = x, y	# onMouseMove won't trigger if mouse button is held, so this updates pos too
+        mouse_x, mouse_y = x, y
 def onMousePress(x, y):
     if(app.scene == GAME):
         new_projectile()	# spawn one projectile when pressed
